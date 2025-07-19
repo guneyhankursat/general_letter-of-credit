@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>echoGive</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.8.1/web3.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-teal: #40E0D0;
+            --light-teal: #8FFFEF;
+            --dark-teal: #20B2AA;
+            --navy: #1A202C;
+            --light-navy: #2D3748;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--light-navy) 100%);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Logo styles removed */
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .gradient-btn {
+            background: linear-gradient(90deg, var(--primary-teal), var(--light-teal));
+            color: var(--navy);
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .gradient-btn:hover {
+            background: linear-gradient(90deg, var(--light-teal), var(--primary-teal));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(64, 224, 208, 0.3);
+        }
+
+        .donate-btn {
+            background: linear-gradient(90deg, var(--dark-teal), var(--primary-teal));
+            color: var(--navy);
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .donate-btn:hover {
+            background: linear-gradient(90deg, var(--primary-teal), var(--dark-teal));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(64, 224, 208, 0.3);
+        }
+
+        select, input {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--primary-teal);
+            box-shadow: 0 0 0 3px rgba(64, 224, 208, 0.3);
+        }
+
+        .tx-info {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .light-teal-link {
+            color: var(--light-teal);
+        }
+        
+        .light-teal-link:hover {
+            text-decoration: underline;
+            color: var(--light-teal);
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body class="min-h-screen py-8">
+    <div class="container mx-auto px-4">
+        <header class="text-center mb-8">
+            <!-- Added Echo Give h1 tag -->
+            <h1 class="text-5xl font-bold mb-4">Echo Give</h1>
+            <!-- Original echoGive h1 kept as well -->
+            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-light-teal to-primary-teal">echoGive</h1>
+            <!-- Added logo -->
+            <img src="logo.png" alt="Echo Give Logo" class="mx-auto my-4 h-192 w-auto">
+            <p class="text-gray-300 mt-2">All donations are matched 1:1 from our pool. <a href="https://sepoliafaucet.com/" target="_blank" class="light-teal-link">Get test ETH on Sepolia</a></p>
+        </header>
+
+        <div class="w-full max-w-lg mx-auto card rounded-xl shadow-xl p-6">
+            <!-- Connection Status -->
+            <div class="flex justify-between items-center mb-6">
+                <span id="network-name" class="text-gray-300 bg-light-navy px-3 py-1 rounded-full text-sm">Not Connected</span>
+                <button id="connect-wallet" class="gradient-btn px-4 py-2 rounded-full">
+                    Connect Wallet
+                </button>
+            </div>
+            
+            <!-- Charity Selector -->
+            <div class="mb-6">
+                <label class="block text-gray-300 mb-2 font-medium">Select a charity:</label>
+                <select id="charity-selector" class="w-full p-3 rounded-lg focus:outline-none">
+                    <option value="" disabled selected>Select a charity</option>
+                    <!-- Charities will be populated here -->
+                </select>
+            </div>
+            
+            <!-- Charity Info (Hidden by default) -->
+            <div id="charity-info" class="mb-6 hidden">
+                <h2 id="charity-name" class="text-xl font-semibold mb-2 text-primary-teal">Charity Name</h2>
+                <p id="charity-description" class="text-gray-300 mb-4">Description of the charity.</p>
+                <div class="text-sm text-gray-400 mb-4">
+                    <span>Address: </span>
+                    <span id="charity-address" class="font-mono">0x0000...0000</span>
+                </div>
+                
+                <!-- Donation Form -->
+                <div class="border-t border-gray-700 pt-4">
+                    <label class="block text-gray-300 mb-2 font-medium">Donation Amount (ETH):</label>
+                    <input type="number" id="donation-amount" min="0.001" step="0.001" 
+                           class="w-full p-3 rounded-lg focus:outline-none mb-4" 
+                           placeholder="0.01">
+                    <button id="donate-button" class="w-full donate-btn py-3 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed">
+                        Donate
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Transaction Status (Hidden by default) -->
+            <div id="tx-status" class="mt-6 hidden">
+                <h3 class="font-semibold mb-2 text-primary-teal">Transaction Details</h3>
+                <div class="p-4 tx-info rounded-lg">
+                    <p class="mb-2">Donation Amount: <span id="donation-amount-display" class="font-medium">0</span> ETH</p>
+                    <p class="mb-2">Matching Amount: <span id="matching-amount-display" class="font-medium">0</span> ETH</p>
+                    <p class="mb-2">Total Sent to Charity: <span id="total-sent" class="font-medium">0</span> ETH</p>
+                    <p class="mb-2">Transaction Status: <span id="tx-status-text" class="font-medium">Pending...</span></p>
+                    <a id="tx-link" href="#" class="light-teal-link hidden block mt-2" target="_blank">
+                        View on Etherscan →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cryptocurrency Price Ticker Footer -->
+    <footer class="fixed bottom-0 left-0 w-full bg-navy border-t border-primary-teal py-2 px-4 overflow-hidden">
+        <div class="crypto-ticker flex items-center space-x-6 animate-scroll">
+            <div id="crypto-prices" class="flex items-center space-x-6 whitespace-nowrap">
+                <!-- Prices will be inserted here -->
+                <span class="text-gray-300">Loading cryptocurrency prices...</span>
+            </div>
+        </div>
+    </footer>
+
+    <style>
+        @keyframes scroll {
+            0% {
+                transform: translateX(100%);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+        
+        .animate-scroll {
+            animation: scroll 30s linear infinite;
+        }
+    </style>
+
+    <script>
+        // Contract ABI
+        const contractABI = [
+            {
+                "inputs": [],
+                "name": "getApprovedRecipients",
+                "outputs": [{"internalType": "address[]", "name": "", "type": "address[]"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "address", "name": "_recipientAddress", "type": "address"}],
+                "name": "getRecipientDetails",
+                "outputs": [
+                    {"internalType": "string", "name": "name", "type": "string"},
+                    {"internalType": "address", "name": "walletAddress", "type": "address"},
+                    {"internalType": "string", "name": "description", "type": "string"},
+                    {"internalType": "bool", "name": "isApproved", "type": "bool"},
+                    {"internalType": "uint256", "name": "totalReceived", "type": "uint256"},
+                    {"internalType": "uint256", "name": "totalMatched", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "address", "name": "_recipientAddress", "type": "address"}],
+                "name": "donate",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {"indexed": true, "name": "donor", "type": "address"},
+                    {"indexed": true, "name": "recipient", "type": "address"},
+                    {"indexed": false, "name": "amount", "type": "uint256"}
+                ],
+                "name": "DonationReceived",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {"indexed": true, "name": "recipient", "type": "address"},
+                    {"indexed": false, "name": "amount", "type": "uint256"}
+                ],
+                "name": "MatchingApplied",
+                "type": "event"
+            }
+        ];
+
+        // hardcoded address
+        const contractAddress = "0x875c217979e9c229df14605205346b294627bf93";
+        
+        // Variables
+        let web3;
+        let contract;
+        let userAccount;
+        let networkId;
+        let explorerUrl = "https://sepolia.etherscan.io";
+        
+        // DOM Elements
+        const connectWalletBtn = document.getElementById('connect-wallet');
+        const networkNameEl = document.getElementById('network-name');
+        const charitySelector = document.getElementById('charity-selector');
+        const charityInfo = document.getElementById('charity-info');
+        const charityName = document.getElementById('charity-name');
+        const charityDescription = document.getElementById('charity-description');
+        const charityAddress = document.getElementById('charity-address');
+        const donationAmount = document.getElementById('donation-amount');
+        const donateButton = document.getElementById('donate-button');
+        const txStatus = document.getElementById('tx-status');
+        const donationAmountDisplay = document.getElementById('donation-amount-display');
+        const matchingAmountDisplay = document.getElementById('matching-amount-display');
+        const totalSent = document.getElementById('total-sent');
+        const txStatusText = document.getElementById('tx-status-text');
+        const txLink = document.getElementById('tx-link');
+        
+        // Initialize the application
+        async function init() {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    startApp();
+                } catch (error) {
+                    console.error("User denied account access", error);
+                    alert("Please allow wallet access to use this app.");
+                }
+            } else {
+                alert('Please install MetaMask to use this application.');
+            }
+        }
+        
+        // Start the application
+        async function startApp() {
+            try {
+                const accounts = await web3.eth.getAccounts();
+                userAccount = accounts[0];
+                
+                networkId = await web3.eth.net.getId();
+                updateNetworkInfo(networkId);
+                
+                // Ensure Sepolia testnet
+                if (networkId !== 11155111) {
+                    alert("Please switch to the Sepolia testnet.");
+                    return;
+                }
+                
+                contract = new web3.eth.Contract(contractABI, contractAddress);
+                
+                connectWalletBtn.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
+                
+                await loadCharities();
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error("Error initializing app:", error);
+                alert("Error connecting to the blockchain.");
+            }
+        }
+        
+        // Update network info
+        function updateNetworkInfo(networkId) {
+            const networkNames = {
+                1: "Ethereum Mainnet",
+                5: "Goerli Testnet",
+                11155111: "Sepolia Testnet",
+                80001: "Mumbai Testnet",
+                137: "Polygon Mainnet"
+            };
+            networkNameEl.textContent = networkNames[networkId] || `Network ID: ${networkId}`;
+        }
+        
+        // Load charities
+        async function loadCharities() {
+            try {
+                const approvedAddresses = await contract.methods.getApprovedRecipients().call();
+                
+                while (charitySelector.options.length > 1) {
+                    charitySelector.remove(1);
+                }
+                
+                if (approvedAddresses.length === 0) {
+                    charitySelector.innerHTML = '<option value="" disabled>No charities available</option>';
+                } else {
+                    for (const address of approvedAddresses) {
+                        const details = await contract.methods.getRecipientDetails(address).call();
+                        const option = document.createElement('option');
+                        option.value = address;
+                        option.textContent = details.name;
+                        option.dataset.description = details.description;
+                        charitySelector.appendChild(option);
+                    }
+                }
+                
+            } catch (error) {
+                console.error("Error loading charities:", error);
+                alert("Error loading charities.");
+            }
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            connectWalletBtn.addEventListener('click', init);
+            
+            charitySelector.addEventListener('change', function() {
+                const selectedOption = charitySelector.options[charitySelector.selectedIndex];
+                const address = selectedOption.value;
+                
+                if (address) {
+                    charityName.textContent = selectedOption.textContent;
+                    charityDescription.textContent = selectedOption.dataset.description;
+                    charityAddress.textContent = `${address.substring(0, 6)}...${address.substring(38)}`;
+                    charityInfo.classList.remove('hidden');
+                } else {
+                    charityInfo.classList.add('hidden');
+                }
+            });
+            
+            donateButton.addEventListener('click', async function() {
+                const selectedAddress = charitySelector.value;
+                const amount = donationAmount.value;
+                
+                if (!selectedAddress || !amount || parseFloat(amount) <= 0) {
+                    alert("Please select a charity and enter a valid amount.");
+                    return;
+                }
+                
+                const amountInWei = web3.utils.toWei(amount, 'ether');
+                const balance = await web3.eth.getBalance(userAccount);
+                if (BigInt(balance) < BigInt(amountInWei)) {
+                    alert("Insufficient balance.");
+                    return;
+                }
+                
+                donateButton.disabled = true;
+                donateButton.textContent = "Processing...";
+                
+                txStatus.classList.remove('hidden');
+                txStatusText.textContent = "Pending...";
+                txLink.classList.add('hidden');
+                
+                try {
+                    const gasEstimate = await contract.methods.donate(selectedAddress).estimateGas({
+                        from: userAccount,
+                        value: amountInWei
+                    });
+                    
+                    const tx = await contract.methods.donate(selectedAddress).send({
+                        from: userAccount,
+                        value: amountInWei,
+                        gas: Math.floor(gasEstimate * 1.2)
+                    });
+                    
+                    const donationAmountEth = web3.utils.fromWei(amountInWei, 'ether');
+                    donationAmountDisplay.textContent = donationAmountEth;
+                    
+                    const matchingEvent = tx.events.MatchingApplied;
+                    const matchingAmountEth = matchingEvent ? web3.utils.fromWei(matchingEvent.returnValues.amount, 'ether') : "0";
+                    matchingAmountDisplay.textContent = matchingAmountEth;
+                    
+                    const totalSentEth = parseFloat(donationAmountEth) + parseFloat(matchingAmountEth);
+                    totalSent.textContent = totalSentEth.toFixed(4);
+                    
+                    txStatusText.textContent = "Confirmed!";
+                    txLink.href = `${explorerUrl}/tx/${tx.transactionHash}`;
+                    txLink.classList.remove('hidden');
+                    
+                    donateButton.disabled = false;
+                    donateButton.textContent = "Donate";
+                    alert("Donation successful!");
+                    
+                } catch (error) {
+                    console.error("Donation error:", error);
+                    txStatusText.textContent = "Failed";
+                    donateButton.disabled = false;
+                    donateButton.textContent = "Donate";
+                    alert("Donation failed.");
+                }
+            });
+        }
+        
+        // Start the app on page load
+        init();
+        
+        // Cryptocurrency price ticker
+        async function fetchCryptoPrices() {
+            try {
+                // Using CoinGecko's free API
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,solana,cardano,ripple,polkadot&vs_currencies=usd&include_24hr_change=true');
+                const data = await response.json();
+                
+                // Format and display the data
+                const cryptoContainer = document.getElementById('crypto-prices');
+                cryptoContainer.innerHTML = '';
+                
+                const cryptos = [
+                    { id: 'bitcoin', symbol: 'BTC' },
+                    { id: 'ethereum', symbol: 'ETH' },
+                    { id: 'binancecoin', symbol: 'BNB' },
+                    { id: 'solana', symbol: 'SOL' },
+                    { id: 'cardano', symbol: 'ADA' },
+                    { id: 'ripple', symbol: 'XRP' },
+                    { id: 'polkadot', symbol: 'DOT' }
+                ];
+                
+                cryptos.forEach(crypto => {
+                    if (data[crypto.id]) {
+                        const price = data[crypto.id].usd;
+                        const change = data[crypto.id].usd_24h_change;
+                        const changeClass = change >= 0 ? 'text-green-400' : 'text-red-400';
+                        const changeSymbol = change >= 0 ? '↑' : '↓';
+                        const changeValue = Math.abs(change).toFixed(2);
+                        
+                        const cryptoElement = document.createElement('div');
+                        cryptoElement.className = 'flex items-center space-x-2';
+                        cryptoElement.innerHTML = `
+                            <span class="font-bold text-primary-teal">${crypto.symbol}</span>
+                            <span class="text-white">${price.toLocaleString()}</span>
+                            <span class="${changeClass}">${changeSymbol} ${changeValue}%</span>
+                        `;
+                        
+                        cryptoContainer.appendChild(cryptoElement);
+                    }
+                });
+                
+                // Create a duplicate of elements for smooth infinite scrolling
+                const elements = Array.from(cryptoContainer.children);
+                elements.forEach(el => {
+                    const clone = el.cloneNode(true);
+                    cryptoContainer.appendChild(clone);
+                });
+                
+            } catch (error) {
+                console.error('Error fetching crypto prices:', error);
+                document.getElementById('crypto-prices').innerHTML = '<span class="text-gray-300">Unable to load cryptocurrency prices</span>';
+            }
+        }
+        
+        // Initial fetch
+        fetchCryptoPrices();
+        
+        // Update every 2 minutes (CoinGecko free API has rate limits)
+        setInterval(fetchCryptoPrices, 120000);
+    </script>
+</body>
+</html>
