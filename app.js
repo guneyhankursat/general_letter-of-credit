@@ -1,5 +1,18 @@
-import { ethers } from 'https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js';
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from './contract.js';
+// Contract configuration
+const CONTRACT_ADDRESS = "0xEb19778999c20Df0Dd969Ab4D25Cb123Dd9c00F3";
+
+// Load ABI from the JSON file
+let CONTRACT_ABI = [];
+
+// Load the ABI when the page loads
+fetch('./LetterOfCreditABI.json')
+    .then(response => response.json())
+    .then(abi => {
+        CONTRACT_ABI = abi;
+    })
+    .catch(error => {
+        console.error('Error loading ABI:', error);
+    });
 
 class LetterOfCreditApp {
     constructor() {
@@ -101,8 +114,18 @@ class LetterOfCreditApp {
             this.provider = new ethers.providers.Web3Provider(window.ethereum);
             this.signer = this.provider.getSigner();
             
-            // Initialize contract
-            this.contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, this.signer);
+            // Ensure ABI is loaded before initializing contract
+            if (CONTRACT_ABI.length === 0) {
+                this.showStatus('Loading contract ABI...');
+                const response = await fetch('./LetterOfCreditABI.json');
+                CONTRACT_ABI = await response.json();
+            }
+            
+            // Initialize contract with JsonRpcProvider for read operations (like the working test)
+            this.contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, new ethers.providers.JsonRpcProvider("https://sepolia.infura.io/v3/eed037ae31bc401cb5104294f04d1163"));
+            
+            // Create a separate contract instance for write operations
+            this.contractWithSigner = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, this.signer);
             
             // Determine user role
             await this.determineUserRole();
@@ -250,7 +273,7 @@ class LetterOfCreditApp {
             }
             
             this.showStatus('Depositing funds...');
-            const tx = await this.contract.depositFunds({ 
+            const tx = await this.contractWithSigner.depositFunds({ 
                 value: ethers.utils.parseEther(amount) 
             });
             
@@ -268,7 +291,7 @@ class LetterOfCreditApp {
     async confirmShipment() {
         try {
             this.showStatus('Confirming shipment...');
-            const tx = await this.contract.confirmShipment();
+            const tx = await this.contractWithSigner.confirmShipment();
             
             this.showStatus('Waiting for transaction confirmation...');
             await tx.wait();
@@ -284,7 +307,7 @@ class LetterOfCreditApp {
     async verifyDocuments() {
         try {
             this.showStatus('Verifying documents...');
-            const tx = await this.contract.verifyDocuments();
+            const tx = await this.contractWithSigner.verifyDocuments();
             
             this.showStatus('Waiting for transaction confirmation...');
             await tx.wait();
@@ -300,7 +323,7 @@ class LetterOfCreditApp {
     async releasePayment() {
         try {
             this.showStatus('Releasing payment...');
-            const tx = await this.contract.releasePayment();
+            const tx = await this.contractWithSigner.releasePayment();
             
             this.showStatus('Waiting for transaction confirmation...');
             await tx.wait();
@@ -316,7 +339,7 @@ class LetterOfCreditApp {
     async refundBuyer() {
         try {
             this.showStatus('Processing refund...');
-            const tx = await this.contract.refundBuyer();
+            const tx = await this.contractWithSigner.refundBuyer();
             
             this.showStatus('Waiting for transaction confirmation...');
             await tx.wait();
