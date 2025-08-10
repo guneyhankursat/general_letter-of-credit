@@ -6,6 +6,7 @@
     <title>Letter of Credit - Smart Contract Interface</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
             --primary-blue: #3B82F6;
@@ -107,17 +108,114 @@
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+                .hero {
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .btn-hero {
+            background: linear-gradient(90deg, var(--primary-blue), var(--light-blue));
+            color: white;
+            font-weight: bold;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-size: 1.25rem;
+            transition: all 0.3s ease;
+            margin-top: 2rem;
+        }
+        
+        .btn-hero:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        .nav-container {
+            background: rgba(26, 32, 44, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-link {
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .nav-link:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+        
+        .nav-link.active {
+            background: var(--primary-blue);
+        }
     </style>
 </head>
 <body class="py-8">
+    <!-- Navigation (shown on all pages except home) -->
+    <div id="main-nav" class="nav-container py-4 hidden">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center">
+                <div class="text-xl font-bold">Letter of Credit</div>
+                <div class="flex gap-2">
+                    <a href="#" class="nav-link" data-page="dashboard">Dashboard</a>
+                    <a href="#" class="nav-link" data-page="about">About</a>
+                    <a href="#" class="nav-link" data-page="contact">Contact</a>
+                    <a href="#" class="nav-link" data-page="home">Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="home-page" class="page active">
+        <div class="hero">
+            <div class="container mx-auto px-4">
+                <h1 class="text-5xl font-bold mb-6">Decentralized Letter of Credit</h1>
+                <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+                    Secure international trade transactions with blockchain-powered smart contracts. 
+                    Eliminate trust issues and reduce settlement times with our decentralized solution.
+                </p>
+                <button id="getStarted" class="btn-hero">Get Started</button>
+            </div>
+        </div>
+        
+        <!-- Features Section -->
+        <div class="container mx-auto px-4 py-16">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="card rounded-xl shadow-xl p-6">
+                    <h3 class="text-xl font-semibold mb-3">Secure Escrow</h3>
+                    <p class="text-gray-300">Funds held in smart contract until all conditions are met</p>
+                </div>
+                <div class="card rounded-xl shadow-xl p-6">
+                    <h3 class="text-xl font-semibold mb-3">Arbiter Mediation</h3>
+                    <p class="text-gray-300">Neutral third-party resolves disputes fairly</p>
+                </div>
+                <div class="card rounded-xl shadow-xl p-6">
+                    <h3 class="text-xl font-semibold mb-3">Time-bound</h3>
+                    <p class="text-gray-300">Automatic resolution based on deadlines</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Page -->
+    <div id="dashboard-page" class="page py-8">
     <div class="container mx-auto px-4 max-w-6xl">
         <!-- Header -->
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold mb-4">Letter of Credit</h1>
+            <h1 class="text-4xl font-bold mb-4">Letter of Credit Dashboard</h1>
             <p class="text-gray-300">Smart Contract Interface - Sepolia Testnet</p>
-            <p class="text-sm text-gray-400 mt-2">
-                Contract: <span class="font-mono">0xEb19778999c20Df0Dd969Ab4D25Cb123Dd9c00F3</span>
-            </p>
+            <button id="backToHome" class="mt-4 text-blue-400 hover:text-blue-300">← Back to Home</button>
         </header>
 
         <!-- Connection Section -->
@@ -136,89 +234,42 @@
         <!-- Status Display -->
         <div id="status" class="status info hidden"></div>
 
-        <!-- Contract Information -->
+        <!-- Create LoC -->
         <div class="card rounded-xl shadow-xl p-6 mb-6">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">Contract Information</h2>
-                <button id="getContractDetails" class="btn-primary px-4 py-2 rounded-lg">
-                    Refresh Details
+                <h2 class="text-xl font-semibold">Create LoC</h2><br>
+                    <div class="flex gap-2">
+                        <input type="text" id="sellerAddress" placeholder="Enter seller address" 
+                        class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600">
+                        <input type="text" id="arbiterAddress" placeholder="Enter arbiter address" 
+                        class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600">
+                        <input type="number" id="shipmentDeadline" placeholder="Enter shipment deadline (in days)"
+                        class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600">
+                        <input type="number" id="verificationDeadline" placeholder="Enter verification deadline (in days)"
+                        class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600">
+                    </div>
+                    <button id="createLoC" class="btn-primary px-4 py-2 rounded-lg">
+                        Create
+                    </button>
+            </div>
+        </div>
+
+        <!-- LoC Information -->
+        <div class="card rounded-xl shadow-xl p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-semibold mb-2">LoCs</h2>
+                    <div id="userInfo" class="text-gray-300"></div>
+                </div>
+                <button id="refreshLocs" class="btn-primary px-6 py-3 rounded-lg">
+                    Refresh
                 </button>
             </div>
-            <div id="contractInfo" class="text-gray-300">
-                <p>Connect your wallet to view contract details...</p>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div id="actionButtons" class="card rounded-xl shadow-xl p-6 mb-6" style="display: none;">
-            <h2 class="text-xl font-semibold mb-4">Contract Actions</h2>
-            
-            <!-- Buyer Actions -->
-            <div class="mb-6">
-                <h3 class="text-lg font-medium mb-3 text-blue-300">Buyer Actions</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="card p-4">
-                        <h4 class="font-medium mb-2">Deposit Funds</h4>
-                        <div class="flex gap-2">
-                            <input type="number" id="depositAmount" placeholder="Amount (ETH)" 
-                                   class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600">
-                            <button id="depositFunds" class="btn-primary px-4 py-2 rounded">
-                                Deposit
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card p-4">
-                        <h4 class="font-medium mb-2">Refund Buyer</h4>
-                        <p class="text-sm text-gray-400 mb-2">Refund if deadlines are missed</p>
-                        <button id="refundBuyer" class="btn-warning px-4 py-2 rounded w-full">
-                            Request Refund
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Seller Actions -->
-            <div class="mb-6">
-                <h3 class="text-lg font-medium mb-3 text-green-300">Seller Actions</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="card p-4">
-                        <h4 class="font-medium mb-2">Confirm Shipment</h4>
-                        <p class="text-sm text-gray-400 mb-2">Confirm that goods have been shipped</p>
-                        <button id="confirmShipment" class="btn-success px-4 py-2 rounded w-full">
-                            Confirm Shipment
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Arbiter Actions -->
-            <div class="mb-6">
-                <h3 class="text-lg font-medium mb-3 text-yellow-300">Arbiter Actions</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="card p-4">
-                        <h4 class="font-medium mb-2">Verify Documents</h4>
-                        <p class="text-sm text-gray-400 mb-2">Verify shipping documents</p>
-                        <button id="verifyDocuments" class="btn-warning px-4 py-2 rounded w-full">
-                            Verify Documents
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- General Actions -->
             <div>
-                <h3 class="text-lg font-medium mb-3 text-purple-300">General Actions</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="card p-4">
-                        <h4 class="font-medium mb-2">Release Payment</h4>
-                        <p class="text-sm text-gray-400 mb-2">Release payment to seller</p>
-                        <button id="releasePayment" class="btn-success px-4 py-2 rounded w-full">
-                            Release Payment
-                        </button>
-                    </div>
-                </div>
+                <div id="loc-list"></div>
             </div>
         </div>
+
 
         <!-- Contract States Guide -->
         <div class="card rounded-xl shadow-xl p-6">
@@ -247,6 +298,144 @@
                 <div class="card p-4">
                     <h4 class="font-medium text-red-300">6. Refunded</h4>
                     <p class="text-sm text-gray-400">Funds returned to buyer</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+        <!-- About Us Page -->
+    <div id="about-page" class="page py-8">
+        <div class="container mx-auto px-4 max-w-4xl">
+            <h1 class="text-4xl font-bold mb-8 text-center">About Our Platform</h1>
+            
+            <div class="card rounded-xl shadow-xl p-8 mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Our Mission</h2>
+                <p class="mb-6 text-gray-300">
+                    We're revolutionizing international trade by leveraging blockchain technology to create 
+                    trustless, transparent, and efficient Letter of Credit transactions.
+                </p>
+                
+                <h2 class="text-2xl font-semibold mb-4 mt-8">How It Works</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-medium mb-3">1. Contract Creation</h3>
+                        <p class="text-gray-300">Buyer creates a smart contract with terms and conditions</p>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-medium mb-3">2. Funds Escrow</h3>
+                        <p class="text-gray-300">Buyer deposits funds into the secure smart contract</p>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-medium mb-3">3. Shipment Confirmation</h3>
+                        <p class="text-gray-300">Seller confirms shipment of goods</p>
+                    </div>
+                    <div class="card p-6">
+                        <h3 class="text-xl font-medium mb-3">4. Document Verification</h3>
+                        <p class="text-gray-300">Arbiter verifies shipping documents</p>
+                    </div>
+                </div>
+                
+                <h2 class="text-2xl font-semibold mb-4 mt-8">The Team</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="card p-6 text-center">
+                        <div class="w-24 h-24 bg-blue-500 rounded-full mx-auto mb-4"></div>
+                        <h3 class="text-xl font-medium">Siddharta </h3>
+                        <p class="text-gray-400">CEO</p>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="w-24 h-24 bg-blue-500 rounded-full mx-auto mb-4"></div>
+                        <h3 class="text-xl font-medium">Guney</h3>
+                        <p class="text-gray-400">CTO</p>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="w-24 h-24 bg-blue-500 rounded-full mx-auto mb-4"></div>
+                        <h3 class="text-xl font-medium">Sahana</h3>
+                        <p class="text-gray-400">CDO</p>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="w-24 h-24 bg-blue-500 rounded-full mx-auto mb-4"></div>
+                        <h3 class="text-xl font-medium">Jonathan</h3>
+                        <p class="text-gray-400">CRO</p>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="w-24 h-24 bg-blue-500 rounded-full mx-auto mb-4"></div>
+                        <h3 class="text-xl font-medium">Yaz</h3>
+                        <p class="text-gray-400">CMO</p>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="w-24 h-24 bg-blue-500 rounded-full mx-auto mb-4"></div>
+                        <h3 class="text-xl font-medium">George</h3>
+                        <p class="text-gray-400">CFO</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Contact Us Page -->
+    <div id="contact-page" class="page py-8">
+        <div class="container mx-auto px-4 max-w-4xl">
+            <h1 class="text-4xl font-bold mb-8 text-center">Contact Us</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="card rounded-xl shadow-xl p-8">
+                    <h2 class="text-2xl font-semibold mb-6">Send Us a Message</h2>
+                    <form id="contact-form" class="space-y-4">
+                        <div>
+                            <label for="name" class="block mb-2">Your Name</label>
+                            <input type="text" id="name" class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600">
+                        </div>
+                        <div>
+                            <label for="email" class="block mb-2">Email Address</label>
+                            <input type="email" id="email" class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600">
+                        </div>
+                        <div>
+                            <label for="subject" class="block mb-2">Subject</label>
+                            <input type="text" id="subject" class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600">
+                        </div>
+                        <div>
+                            <label for="message" class="block mb-2">Message</label>
+                            <textarea id="message" rows="5" class="w-full p-3 rounded-lg bg-gray-700 border border-gray-600"></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary px-6 py-3 rounded-lg w-full">
+                            Send Message
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="card rounded-xl shadow-xl p-8">
+                    <h2 class="text-2xl font-semibold mb-6">Contact Information</h2>
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-lg font-medium mb-2">Email</h3>
+                            <p class="text-gray-300">support@gloc.com</p>
+                            <p class="text-gray-300">partners@gloc.com</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium mb-2">Technical Support</h3>
+                            <p class="text-gray-300">+44 7379422526</p>
+                            <p class="text-gray-300">Mon-Fri, 9am-5pm BST</p>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-medium mb-2">Office Address</h3>
+                            <p class="text-gray-300">G-LOC, Mansion House</p>
+                            <p class="text-gray-300">London, England</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h3 class="text-lg font-medium mb-4">Follow Us</h3>
+                        <div class="flex gap-4">
+                            <a href="#" class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center hover:bg-blue-500 transition">
+                                <span>Tw</span>
+                            </a>
+                            <a href="#" class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center hover:bg-blue-500 transition">
+                                <span>Li</span>
+                            </a>
+                            <a href="#" class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center hover:bg-blue-500 transition">
+                                <span>Gh</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
