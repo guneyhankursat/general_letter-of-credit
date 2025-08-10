@@ -59,6 +59,7 @@ contract LetterOfCredit is ReentrancyGuard {
     }
 
     constructor(
+        address _buyer,
         address _seller,
         address _arbiter,
         uint256 _shipmentDeadlineDays,
@@ -69,7 +70,7 @@ contract LetterOfCredit is ReentrancyGuard {
         require(_shipmentDeadlineDays > 0 && _shipmentDeadlineDays <= 365, "Invalid shipment deadline");
         require(_verificationDeadlineDays > 0 && _verificationDeadlineDays <= 90, "Invalid verification window");
 
-        buyer = msg.sender;
+        buyer = _buyer;
         seller = _seller;
         arbiter = _arbiter;
 
