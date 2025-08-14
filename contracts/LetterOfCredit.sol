@@ -12,6 +12,21 @@ contract LetterOfCredit is ReentrancyGuard {
     address public seller;
     address public arbiter;
 
+    // Metadata
+    string public title;
+    string public description;
+    string public sellerName;
+    string public bankName;
+    string public goodsDescription;
+    uint256 public weightKg;
+    uint256 public agreedAmount;
+
+    // Doc hash
+    string public documentHash;        // public getter auto-generated
+    string public trackingNumber;      // public getter auto-generated
+    string public courierHint;         // optional, free-text e.g. "DHL", "UPS"
+
+
     // State machine
     enum LoCState { Initiated, Funded, Shipped, Verified, Completed, Refunded }
     LoCState public currentState;
@@ -36,6 +51,9 @@ contract LetterOfCredit is ReentrancyGuard {
     event PaymentReleased(address indexed seller, uint256 amount, uint256 timestamp);
     event BuyerRefunded(address indexed buyer, uint256 amount, uint256 timestamp);
     event StateChanged(LoCState newState, uint256 timestamp);
+    event DocumentUploaded(address indexed seller, string cid);
+    event TrackingNumberSet(address indexed seller, string trackingNumber, string courierHint);
+
 
     // Modifiers
     modifier onlyBuyer() {
@@ -63,7 +81,14 @@ contract LetterOfCredit is ReentrancyGuard {
         address _seller,
         address _arbiter,
         uint256 _shipmentDeadlineDays,
-        uint256 _verificationDeadlineDays
+        uint256 _verificationDeadlineDays,
+        string memory _title,
+        string memory _description,
+        string memory _sellerName,
+        string memory _bankName,
+        string memory _goodsDescription,
+        uint256 _weightKg,
+        uint256 _agreedAmount
     ) {
         require(_seller != address(0), "Invalid seller address");
         require(_arbiter != address(0), "Invalid arbiter address");
@@ -73,6 +98,13 @@ contract LetterOfCredit is ReentrancyGuard {
         buyer = _buyer;
         seller = _seller;
         arbiter = _arbiter;
+        title = _title;
+        description = _description;
+        sellerName = _sellerName;
+        bankName = _bankName;
+        goodsDescription = _goodsDescription;
+        weightKg = _weightKg;
+        agreedAmount = _agreedAmount;
 
         createdAt = block.timestamp;
         shipmentDeadline = block.timestamp + (_shipmentDeadlineDays * 1 days);
@@ -147,6 +179,22 @@ contract LetterOfCredit is ReentrancyGuard {
         emit StateChanged(currentState, block.timestamp);
     }
 
+    
+    // Seller uploads IPFS/Arweave reference after shipment
+    function uploadVerificationDocument(string memory _cid) external onlySeller {
+        require(bytes(_cid).length > 0, "Empty CID");
+        documentHash = _cid;
+        emit DocumentUploaded(msg.sender, _cid);
+    }
+
+    // Seller sets tracking number and courier hint
+    function setTrackingNumber(string memory _trackingNumber, string memory _courierHint) external onlySeller {
+        require(bytes(_trackingNumber).length > 0, "Empty tracking number");
+        trackingNumber = _trackingNumber;
+        courierHint = _courierHint;
+        emit TrackingNumberSet(msg.sender, _trackingNumber, _courierHint);
+    }
+
     // Helper function for frontend and PDF generation
     function getContractDetails()
         external
@@ -157,6 +205,8 @@ contract LetterOfCredit is ReentrancyGuard {
             address _arbiter,
             uint256 _amount,
             LoCState _state,
+            string memory _trackingNumber,
+            string memory _courierHint,
             uint256 _createdAt,
             uint256 _fundsDepositedAt,
             uint256 _shipmentConfirmedAt,
@@ -173,6 +223,8 @@ contract LetterOfCredit is ReentrancyGuard {
             arbiter,
             amount,
             currentState,
+            trackingNumber,
+            courierHint,
             createdAt,
             fundsDepositedAt,
             shipmentConfirmedAt,

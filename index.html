@@ -164,10 +164,10 @@
 </head>
 <body class="py-8">
     <!-- Navigation (shown on all pages except home) -->
-    <div id="main-nav" class="nav-container py-4 hidden">
+    <div id="main-nav" class="nav-container fixed top-0 left-0 w-full bg-gray-900 py-2 z-50 hidden">
         <div class="container mx-auto px-4">
             <div class="flex justify-between items-center">
-                <div class="text-xl font-bold">Letter of Credit</div>
+                <div class="text-xl font-bold">G-LOC</div>
                 <div class="flex gap-2">
                     <a href="#" class="nav-link" data-page="dashboard">Dashboard</a>
                     <a href="#" class="nav-link" data-page="about">About</a>
@@ -180,7 +180,7 @@
     <div id="home-page" class="page active">
         <div class="hero">
             <div class="container mx-auto px-4">
-                <h1 class="text-5xl font-bold mb-6">Decentralized Letter of Credit</h1>
+                <h1 class="text-5xl font-bold mb-6 top-2">GLOC - General Letter of Credit</h1>
                 <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
                     Secure international trade transactions with blockchain-powered smart contracts. 
                     Eliminate trust issues and reduce settlement times with our decentralized solution.
@@ -213,7 +213,7 @@
     <div class="container mx-auto px-4 max-w-6xl">
         <!-- Header -->
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold mb-4">Letter of Credit Dashboard</h1>
+            <h1 class="text-4xl font-bold mb-4">G-LOC Dashboard</h1>
             <p class="text-gray-300">Smart Contract Interface - Sepolia Testnet</p>
             <button id="backToHome" class="mt-4 text-blue-400 hover:text-blue-300">← Back to Home</button>
         </header>
@@ -236,21 +236,60 @@
 
         <!-- Create LoC -->
         <div class="card rounded-xl shadow-xl p-6 mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold">Create LoC</h2><br>
-                    <div class="flex gap-2">
-                        <input type="text" id="sellerAddress" placeholder="Enter seller address" 
-                        class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600">
-                        <input type="text" id="arbiterAddress" placeholder="Enter arbiter address" 
-                        class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600">
-                        <input type="number" id="shipmentDeadline" placeholder="Enter shipment deadline (in days)"
-                        class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600">
-                        <input type="number" id="verificationDeadline" placeholder="Enter verification deadline (in days)"
-                        class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-600">
-                    </div>
+            <h2 class="text-xl font-semibold mb-4">Create LoC</h2>
+
+            <div class="space-y-4">
+                <!-- Title -->
+                <input id="title" type="text" placeholder="LoC Title"
+                    class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600">
+
+                <!-- Description -->
+                <textarea id="description" placeholder="Description"
+                    class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600"></textarea>
+
+                <!-- Seller info -->
+                <div class="grid grid-cols-2 gap-4">
+                    <input id="sellerName" type="text" placeholder="Seller Name"
+                        class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                    <input type="text" id="sellerAddress" placeholder="Seller Address"
+                        class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                </div>
+
+                <!-- Bank info -->
+                <div class="grid grid-cols-2 gap-4">
+                    <input id="bankName" type="text" placeholder="Bank Name"
+                        class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                    <input type="text" id="arbiterAddress" placeholder="Arbiter Address"
+                        class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                </div>
+
+                <!-- Goods info -->
+                <div class="grid grid-cols-2 gap-4">
+                    <input id="goodsDescription" type="text" placeholder="Goods Description"
+                        class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                    <input id="weightKg" type="number" placeholder="Weight (kg)"
+                        class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                </div>
+
+                <!-- Deadlines -->
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" id="shipmentDeadline" placeholder="Shipment deadline (days)"
+                        class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                    <input type="number" id="verificationDeadline" placeholder="Verification deadline (days)"
+                        class="p-2 rounded bg-gray-700 text-white border border-gray-600">
+                </div>
+
+                <div class="grid grid-cols-4 gap-4">
+                    <input id="agreedAmount" type="number" step="0.0001" placeholder="Agreed Amount (ETH)"
+                    class="w-full p-2 rounded bg-gray-700 text-white border border-gray-600">
+                </div>
+
+                <!-- Create button -->
+                <div class="flex justify-end">
                     <button id="createLoC" class="btn-primary px-4 py-2 rounded-lg">
                         Create
                     </button>
+                </div>
             </div>
         </div>
 

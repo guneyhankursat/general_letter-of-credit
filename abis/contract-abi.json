@@ -25,6 +25,41 @@
         "internalType": "uint256",
         "name": "_verificationDeadlineDays",
         "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_title",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_sellerName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_bankName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_goodsDescription",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_weightKg",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_agreedAmount",
+        "type": "uint256"
       }
     ],
     "stateMutability": "nonpayable",
@@ -79,6 +114,25 @@
       }
     ],
     "name": "BuyerRefunded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "cid",
+        "type": "string"
+      }
+    ],
+    "name": "DocumentUploaded",
     "type": "event"
   },
   {
@@ -189,6 +243,44 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "trackingNumber",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "courierHint",
+        "type": "string"
+      }
+    ],
+    "name": "TrackingNumberSet",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "agreedAmount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "amount",
     "outputs": [
@@ -216,6 +308,19 @@
   },
   {
     "inputs": [],
+    "name": "bankName",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "buyer",
     "outputs": [
       {
@@ -232,6 +337,19 @@
     "name": "confirmShipment",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "courierHint",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -265,6 +383,32 @@
     "name": "depositFunds",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "description",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "documentHash",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -323,6 +467,16 @@
         "type": "uint8"
       },
       {
+        "internalType": "string",
+        "name": "_trackingNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_courierHint",
+        "type": "string"
+      },
+      {
         "internalType": "uint256",
         "name": "_createdAt",
         "type": "uint256"
@@ -361,6 +515,19 @@
         "internalType": "uint256",
         "name": "_verificationDeadline",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "goodsDescription",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -421,6 +588,37 @@
   },
   {
     "inputs": [],
+    "name": "sellerName",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_trackingNumber",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_courierHint",
+        "type": "string"
+      }
+    ],
+    "name": "setTrackingNumber",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "shipmentConfirmedAt",
     "outputs": [
       {
@@ -447,6 +645,45 @@
   },
   {
     "inputs": [],
+    "name": "title",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "trackingNumber",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_cid",
+        "type": "string"
+      }
+    ],
+    "name": "uploadVerificationDocument",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "verificationDeadline",
     "outputs": [
       {
@@ -463,6 +700,19 @@
     "name": "verifyDocuments",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "weightKg",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   }
 ]

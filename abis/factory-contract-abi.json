@@ -75,6 +75,41 @@
         "internalType": "uint256",
         "name": "_verificationDeadlineDays",
         "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_title",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_sellerName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_bankName",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_goodsDescription",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_weightKg",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_agreedAmount",
+        "type": "uint256"
       }
     ],
     "name": "createLoC",
