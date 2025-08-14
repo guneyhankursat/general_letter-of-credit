@@ -14,9 +14,29 @@ contract LoCFactory {
         address _seller,
         address _arbiter,
         uint256 _shipmentDeadlineDays,
-        uint256 _verificationDeadlineDays
+        uint256 _verificationDeadlineDays,
+        string memory _title,
+        string memory _description,
+        string memory _sellerName,
+        string memory _bankName,
+        string memory _goodsDescription,
+        uint256 _weightKg,
+        uint256 _agreedAmount
     ) external returns (address) {
-        LetterOfCredit newLoC = new LetterOfCredit(_buyer, _seller, _arbiter, _shipmentDeadlineDays, _verificationDeadlineDays);
+        LetterOfCredit newLoC = new LetterOfCredit(
+            _buyer, 
+            _seller, 
+            _arbiter, 
+            _shipmentDeadlineDays, 
+            _verificationDeadlineDays,
+            _title,
+            _description,
+            _sellerName,
+            _bankName,
+            _goodsDescription,
+            _weightKg,
+            _agreedAmount
+        );
         allLoCs.push(address(newLoC));
         
         userToContracts[msg.sender].push(address(newLoC));
@@ -38,7 +58,7 @@ contract LoCFactory {
 
     function getUserRoleInContract(address user, address loc) external view returns (string memory) {
         LetterOfCredit locContract = LetterOfCredit(loc);
-        (address buyer, address seller, address arbiter,,,,,,,,,,) = locContract.getContractDetails();
+        (address buyer, address seller, address arbiter,,,,,,,,,,,,) = locContract.getContractDetails();
         if (user == buyer) return "Buyer";
         if (user == seller) return "Seller";
         if (user == arbiter) return "Bank";

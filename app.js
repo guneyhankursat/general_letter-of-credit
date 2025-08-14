@@ -1,11 +1,15 @@
-
 // Contract configuration
-const CONTRACT_ADDRESS = "0x779fECb1e368e7dffDDa45E88FC0445f1b468208";
-const LOC_CONTRACT_ADDRESS = "0xF88a9af2B53f261AA6675b9C7C5BDD4d12c94949";
+const CONTRACT_ADDRESS = "0x77c503B101Edd5D08Cb2B092f9A5aA3Fc5AEFfFC";
+const LOC_CONTRACT_ADDRESS = "0x85Fe30fcA2D624CCA9C0907b2C8e2A90D336fEB9";
 
 // Load ABI from the JSON file
 let CONTRACT_ABI = [];
 let LOC_CONTRACT_ABI = [];
+
+// Infura token for IPFS uploads
+// const INFURA_PROJECT_ID = "eed037ae31bc401cb5104294f04d1163";
+// const INFURA_PROJECT_SECRET = "zBgxwmYJsOymp7WAr97AbWtkJc+66NkMJvC8+ay0Tv6EtSLdL6q2fw";
+// const INFURA_AUTH = "Basic " + btoa(INFURA_PROJECT_ID + ":" + INFURA_PROJECT_SECRET);
 
 // Load the ABI when the page loads
 fetch('./abis/factory-contract-abi.json')
@@ -16,6 +20,7 @@ fetch('./abis/factory-contract-abi.json')
     .catch(error => {
         console.error('Error loading ABI:', error);
     });
+
 // Load the ABI when the page loads
 fetch('./abis/contract-abi.json')
     .then(response => response.json())
@@ -60,6 +65,7 @@ class PageNavigator {
     }
 
     showPage(pageId) {
+        window.location.hash = pageId;
         // Hide all pages
         Object.values(this.pages).forEach(page => {
             page?.classList.remove('active');
@@ -79,6 +85,8 @@ class PageNavigator {
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.toggle('active', link.getAttribute('data-page') === pageId);
         });
+
+        window.location.hash = pageId;
     }
 }
 
@@ -165,7 +173,7 @@ class LetterOfCreditApp {
                 const response = await fetch('./abis/factory-contract-abi.json');
                 LOC_CONTRACT_ABI = await response.json();
             }
-            
+
             // Initialize contract with JsonRpcProvider for read operations (like the working test)
             this.contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, new ethers.providers.JsonRpcProvider("https://sepolia.infura.io/v3/eed037ae31bc401cb5104294f04d1163"));
             
@@ -195,12 +203,15 @@ class LetterOfCreditApp {
                 const loc = new ethers.Contract(addr, CONTRACT_ABI, signer);
                 const details = await loc.getContractDetails();
                 const role = await factory.getUserRoleInContract(userAddress, addr);
+                // const docCid = await loc.documentHash();
                 loc.role = role;
                 loc.details = details;
                 loc.addr = addr;
+                // loc.docCid = docCid;
                 console.log("loc address:", addr);
                 console.log("role:", role);
-                console.log("state:", details[4]);
+                console.log("tracking details:", details[5]);
+                // console.log("document CID:", docCid);
                 locs.push(loc);
             }
             console.log("Fetched LoCs:", locs);
@@ -217,21 +228,41 @@ class LetterOfCreditApp {
             const arbiter = document.getElementById('arbiterAddress').value;
             const shipmentDeadline = document.getElementById('shipmentDeadline').value;
             const verificationDeadline = document.getElementById('verificationDeadline').value;
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const sellerName = document.getElementById('sellerName').value;
+            const bankName = document.getElementById('bankName').value;
+            const goodsDescription = document.getElementById('goodsDescription').value;
+            const weightKg = document.getElementById('weightKg').value;
+            const agreedAmountEth = document.getElementById('agreedAmount').value;
+            const agreedAmountWei = ethers.utils.parseEther(agreedAmountEth.toString());
+
+            if (!seller || !arbiter || !shipmentDeadline || !verificationDeadline || !title || !description || !agreedAmountEth) {
+                this.showError('Please fill in all fields');
+                return;
+            }
             const factory = new ethers.Contract(LOC_CONTRACT_ADDRESS, LOC_CONTRACT_ABI, this.signer);
             const tx = await factory.createLoC(
                 this.userAddress,
                 seller, 
                 arbiter,
                 shipmentDeadline, 
-                verificationDeadline 
+                verificationDeadline,
+                title,
+                description,
+                sellerName,
+                bankName,
+                goodsDescription,
+                weightKg,
+                agreedAmountWei
             );
             this.showStatus('Creating Letter of Credit...');
             await tx.wait();
             this.showSuccess('Letter of Credit created successfully!');
-            document.getElementById('sellerAddress').value = '';
-            document.getElementById('arbiterAddress').value = '';
-            document.getElementById('shipmentDeadline').value = '';
-            document.getElementById('verificationDeadline').value = '';
+            ['sellerAddress','arbiterAddress','shipmentDeadline','verificationDeadline',
+            'title','description','sellerName','bankName','goodsDescription','weightKg'
+            ].forEach(id => document.getElementById(id).value = '');
+
             await this.fetchUserLocs(this.userAddress, this.signer);
         } catch (error) {
             this.showError('Failed to create Letter of Credit: ' + error.message);
@@ -260,7 +291,7 @@ class LetterOfCreditApp {
                         value: ethers.utils.parseEther(amount) 
                     });
                     break;
-                    }
+                }
                 case "confirmShipment":
                     tx = await loc.confirmShipment();
                     break;
@@ -273,12 +304,24 @@ class LetterOfCreditApp {
                 case "refundBuyer":
                     tx = await loc.refundBuyer();
                     break;
+                case "setTrackingNumber": {
+                    const tracking = prompt("Enter tracking number:");
+                    if (!tracking) {
+                        this.showError('Tracking number cannot be empty');
+                        return;
+                    }
+                    const courier = prompt("Enter courier name (optional, e.g., DHL/UPS/FedEx):") || "";
+                    this.showStatus('Setting tracking number...');
+                    tx = await loc.setTrackingNumber(tracking.trim(), courier.trim());
+                    break;
+                }
                 default:
                     alert("Invalid action");
                     return;
             }
             console.log("Waiting for transaction confirmation...");
             await tx.wait();
+            this.showSuccess(`${action} successfull!`);
             console.log(`${action} executed successfully`);
             await this.updateAndRenderLocs();
             alert(`${action} successful!`);
@@ -301,15 +344,44 @@ class LetterOfCreditApp {
         for (const loc of locs) {
             const statusText = await this.renderLoCState(loc.details[4]);
             const amountText = await ethers.utils.formatEther(loc.details[3]);
+            const trackingNumber = loc.details[5] || "N/A";
+            const courierHint = loc.details[6] || "N/A";
+            const title = await loc.title();
             const card = document.createElement("div");
             card.className = "card p-4";
             card.innerHTML = `
+                <p><strong>Title:</strong> ${title}</p>
                 <p><strong>Contract Address:</strong> ${loc.address}</p>
                 <p><strong>Role in LoC:</strong> ${loc.role}</p>
                 <p><strong>Status:</strong> ${statusText}</p>
                 <p><strong>Amount:</strong> ${amountText} ETH</p>
             `;
             //action buttons
+            // Show tracking
+            if (trackingNumber && Number(loc.details[4]) === 2) {
+                const p = document.createElement("p");
+                p.innerHTML = `<strong>Tracking:</strong> ${trackingNumber} ${courierHint ? `(${courierHint})` : ""}`;
+                card.appendChild(p);
+
+                const trackBtn = document.createElement("a");
+                trackBtn.textContent = "Track Shipment";
+                trackBtn.href = this.buildTrackingLink(trackingNumber);
+                trackBtn.target = "_blank";
+                trackBtn.className = "btn-primary px-4 py-2 rounded-lg";
+                card.appendChild(trackBtn);
+            }
+            // if (loc.docCid) {
+            //     const p = document.createElement("p");
+            //     p.innerHTML = `<strong>Document CID:</strong> ${loc.docCid}`;
+            //     card.appendChild(p);
+
+            //     const viewBtn = document.createElement("a");
+            //     viewBtn.textContent = "View Document";
+            //     viewBtn.href = this.buildIpfsLink(loc.docCid);
+            //     viewBtn.target = "_blank";
+            //     viewBtn.className = "btn-secondary inline-block mt-2 px-3 py-2 rounded-lg";
+            //     card.appendChild(viewBtn);
+            // }
             if (loc.role === "Buyer" && Number(loc.details[4]) === 0) {
                 const btn = document.createElement("button");
                 btn.textContent = "Deposit";
@@ -318,14 +390,46 @@ class LetterOfCreditApp {
                 btn.addEventListener("click", () => this.handleAction(loc, "depositFunds"));
                 card.appendChild(btn);
             }
+            // === Seller: set tracking number in Shipped (1) 
+
             if (loc.role === "Seller" && Number(loc.details[4]) === 1) {
-                const btn = document.createElement("button");
-                btn.textContent = "Confirm Shipment";
-                btn.id = "confirmShipment";
-                btn.className = "btn-primary px-4 py-2 rounded-lg";
-                btn.addEventListener("click", () => this.handleAction(loc, "confirmShipment"));
-                card.appendChild(btn);
+                // Always show Set Tracking button
+                const setTrackBtn = document.createElement("button");
+                setTrackBtn.textContent = "Set Tracking Number";
+                setTrackBtn.className = "btn-primary px-4 py-2 rounded-lg mr-2";
+                setTrackBtn.addEventListener("click", () => this.setTrackingNumber(loc));
+                card.appendChild(setTrackBtn);
+
+                // const uploadBtn = document.createElement("button");
+                // uploadBtn.textContent = "Upload Verification Document";
+                // uploadBtn.className = "btn-primary px-4 py-2 rounded-lg mr-2";
+                // uploadBtn.addEventListener("click", () => this.uploadDocForVerification(loc));
+                // card.appendChild(uploadBtn);
+
+                // Confirm Shipment button — disabled until tracking and documents exists
+                const confirmBtn = document.createElement("button");
+                confirmBtn.textContent = "Confirm Shipment";
+                confirmBtn.id = "confirmShipment";
+                confirmBtn.className = "btn-primary px-4 py-2 rounded-lg";
+                confirmBtn.disabled = (!loc.details[5]); // Disable if no tracking number
+                confirmBtn.style.opacity = confirmBtn.disabled ? "0.6" : "1.0";
+                confirmBtn.title = confirmBtn.disabled ? "Set a tracking number first" : "";
+                confirmBtn.addEventListener("click", () => {
+                    if (!loc.trackingNumber) {
+                        this.showWarning("Please set a tracking number before confirming shipment.");
+                        return;
+                    }
+                    this.handleAction(loc, "confirmShipment");
+                });
+                card.appendChild(confirmBtn);
+
+                // Tiny hint
+                const hint = document.createElement("div");
+                hint.className = "text-sm opacity-80 mt-2";
+                hint.textContent = "A valid tracking number is required to proceed.";
+                card.appendChild(hint);
             }
+            // === Bank: verify documents in Shipped (2)
             if (loc.role === "Bank" && Number(loc.details[4]) === 2) {
                 const btn = document.createElement("button");
                 btn.textContent = "Verify Documents";
@@ -333,6 +437,13 @@ class LetterOfCreditApp {
                 btn.className = "btn-primary px-4 py-2 rounded-lg";
                 btn.addEventListener("click", () => this.handleAction(loc, "verifyDocuments"));
                 card.appendChild(btn);
+            }
+            // === Bank: encourage checking tracking/doc before verifying in Shipped (2)
+            if (loc.role === "Bank" && Number(loc.details[4]) === 2) {
+                const note = document.createElement("div");
+                note.className = "mt-2 text-sm opacity-80";
+                note.textContent = "Review the shipment tracking before verifying.";
+                card.appendChild(note);
             }
             if (["Buyer", "Bank"].includes(loc.role) && Number(loc.details[4]) === 3) {
                 const btn = document.createElement("button");
@@ -413,6 +524,8 @@ class LetterOfCreditApp {
         arbiter,
         amount,
         state,
+        trackingNum,
+        courierHint,
         createdAt,
         fundsDepositedAt,
         shipmentConfirmedAt,
@@ -423,6 +536,16 @@ class LetterOfCreditApp {
         verificationDeadline
         ] = loc.details;
 
+        let title = "", description = "", sellerName = "", bankName = "",
+        goodsDescription = "", weightKg = "";
+        try { title = await loc.title(); } catch {}
+        try { description = await loc.description(); } catch {}
+        try { sellerName = await loc.sellerName(); } catch {}
+        try { bankName = await loc.bankName(); } catch {}
+        try { goodsDescription = await loc.goodsDescription(); } catch {}
+        try { weightKg = await loc.weightKg(); } catch {}
+
+
         const formatDate = (timestamp) => {
         const ts = typeof timestamp === 'bigint' ? Number(timestamp) : timestamp;
         return ts > 0 ? new Date(ts * 1000).toLocaleString() : 'N/A';
@@ -430,55 +553,99 @@ class LetterOfCreditApp {
 
         const stateMap = ["Initiated", "Funded", "Shipped", "Verified", "Completed", "Refunded"];
         const stateLabel = stateMap[Number(state)];
+        // let docCid = loc.docCid || "";
+        // if (!docCid && typeof loc.documentHash === "function") {
+        //     try { docCid = await loc.documentHash(); } catch {}
+        // }
+
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-
         let y = 20;
-        doc.setFontSize(18);
-        doc.text("Letter of Credit Summary", 20, y);
+        // ===== Logo (optional: replace with your actual logo URL/Base64) =====
+        // Example Base64 placeholder: a small transparent pixel
+        const logoUrl = "logo.jfif";
+        const logoImg = await fetch(logoUrl).then(r => r.blob()).then(b => new Promise(res => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result);
+            reader.readAsDataURL(b);
+        }));
+        doc.addImage(logoImg, "PNG", 160, 10, 30, 30);
+
+        // ===== Header =====
+        doc.setFontSize(20).setFont("helvetica", "bold");
+        doc.text("Letter of Credit", 20, y);
         y += 10;
-        doc.setFontSize(12);
+
+        doc.setFontSize(12).setFont("helvetica", "normal");
         doc.text(`Contract Address: ${loc.address}`, 20, y);
-        y += 10;
+        y += 6;
         doc.text(`Status: ${stateLabel}`, 20, y);
-
-        // Divider
         y += 8;
         doc.line(20, y, 190, y);
         y += 10;
 
+        // ===== Contract Overview =====
+        doc.setFont("helvetica", "bold").setFontSize(14);
+        doc.text("Contract Overview", 20, y);
+        y += 8;
+
+        doc.setFont("helvetica", "normal").setFontSize(12);
+        doc.text(`Title: ${title || "N/A"}`, 20, y); y += 6;
+        doc.text(`Description: ${description || "N/A"}`, 20, y); y += 8;
+        doc.line(20, y, 190, y);
+        y += 10;
         // Section: Parties
-        doc.setFont("helvetica", "bold");
-        doc.text("Parties Involved", 20, y);
-        doc.setFont("helvetica", "normal");
-        y += 8;
-        doc.text(`Buyer: ${buyer}`, 20, y);
-        y += 6;
-        doc.text(`Seller: ${seller}`, 20, y);
-        y += 6;
-        doc.text(`Arbiter (Bank): ${arbiter}`, 20, y);
-
-        // Divider
-        y += 8;
+        // ===== Parties =====
+        doc.setFont("helvetica", "bold").setFontSize(14);
+        doc.text("Parties Involved", 20, y); y += 8;
+        doc.setFont("helvetica", "normal").setFontSize(12);
+        doc.text(`Buyer Address: ${buyer}`, 20, y); y += 6;
+        doc.text(`Seller Name: ${sellerName || "N/A"}`, 20, y); y += 6;
+        doc.text(`Seller Address: ${seller}`, 20, y); y += 6;
+        doc.text(`Bank Name: ${bankName || "N/A"}`, 20, y); y += 8;
+        doc.text(`Bank/Arbiter Address: ${arbiter}`, 20, y); y += 6;
         doc.line(20, y, 190, y);
         y += 10;
-
+        // ===== Goods Info =====
+        doc.setFont("helvetica", "bold").setFontSize(14);
+        doc.text("Goods & Shipment Details", 20, y); y += 8;
+        doc.setFont("helvetica", "normal").setFontSize(12);
+        doc.text(`Goods Description: ${goodsDescription || "N/A"}`, 20, y); y += 6;
+        doc.text(`Weight: ${weightKg || "N/A"} kg`, 20, y); y += 6;
+        doc.text(`Tracking Number: ${trackingNum || 'N/A'}`, 20, y); y += 6;
+        doc.text(`Courier: ${courierHint || 'N/A'}`, 20, y); y += 6;
+        if (trackingNum) {
+            const tUrl = this.buildTrackingLink(trackingNum);
+            doc.text(`Tracking URL: ${tUrl}`, 20, y); y += 6;
+        }
+        // doc.text(`Document CID: ${docCid || 'N/A'}`, 20, y); y += 6;
+        // if (docCid) {
+        //     const ipfsUrl = `https://ipfs.infura.io/ipfs/${cid}`;
+        //     doc.text(`Document URL: ${ipfsUrl}`, 20, y); y += 6;
+        // }
+        doc.line(20, y, 190, y);
+        y += 10;
         // Section: Financials
-        doc.setFont("helvetica", "bold");
+        doc.setFont("helvetica", "bold").setFontSize(14);
         doc.text("Financials", 20, y);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("helvetica", "normal").setFontSize(12);
         y += 8;
-        doc.text(`Amount: ${ethers.utils.formatEther(amount)} ETH`, 20, y);
+        let agreedAmountEth = "0.0000";
+        try {
+            const agreedWei = await loc.agreedAmount();
+            agreedAmountEth = parseFloat(ethers.utils.formatEther(agreedWei))
+                .toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+        } catch {}
 
-        // Divider
-        y += 8;
+        doc.text(`Contract Amount (Agreed): ${agreedAmountEth} ETH`, 20, y); y += 6;
+        doc.text(`Amount Deposited: ${ethers.utils.formatEther(amount)} ETH`, 20, y); y += 8;
         doc.line(20, y, 190, y);
         y += 10;
 
         // Section: Timeline
-        doc.setFont("helvetica", "bold");
+        doc.setFont("helvetica", "bold").setFontSize(14);
         doc.text("Timeline", 20, y);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("helvetica", "normal").setFontSize(12);
         y += 8;
         doc.text(`Created At: ${formatDate(createdAt)}`, 20, y);
         y += 6;
@@ -491,30 +658,121 @@ class LetterOfCreditApp {
         doc.text(`Payment Released At: ${formatDate(paymentReleasedAt)}`, 20, y);
         y += 6;
         doc.text(`Refund Processed At: ${formatDate(refundProcessedAt)}`, 20, y);
-
-        // Divider
         y += 8;
         doc.line(20, y, 190, y);
         y += 10;
-
         // Section: Deadlines
-        doc.setFont("helvetica", "bold");
+        doc.setFont("helvetica", "bold").setFontSize(14);
         doc.text("Deadlines", 20, y);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("helvetica", "normal").setFontSize(12);
         y += 8;
         doc.text(`Shipment Deadline: ${formatDate(shipmentDeadline)}`, 20, y);
         y += 6;
         doc.text(`Verification Deadline: ${formatDate(verificationDeadline)}`, 20, y);
-
+        y += 8;
+        doc.line(20, y, 190, y);
+        y += 10;
         // Footer
-        y += 15;
-        doc.setFontSize(10);
-        doc.text("Generated by G-LOC Decentralized Trade Finance App", 20, y);
+        y += 5;
+        doc.line(20, y, 190, y); y += 10;
+        doc.setFont("helvetica", "italic").setFontSize(10);
+        doc.text("This Letter of Credit is generated by G-LOC, a decentralized trade finance application.", 20, y);
 
         doc.save(`LOC-${loc.address.slice(0, 6)}.pdf`);
         console.log("PDF downloaded successfully");
         alert("PDF downloaded successfully!");
     }
+
+    // async uploadToIPFS(file) {
+    //     try {
+    //         const INFURA_PROJECT_ID = "eed037ae31bc401cb5104294f04d1163";
+    //         const INFURA_PROJECT_SECRET = "zBgxwmYJsOymp7WAr97AbWtkJc+66NkMJvC8+ay0Tv6EtSLdL6q2fw";
+    //         const INFURA_AUTH = "Basic " + btoa(INFURA_PROJECT_ID + ":" + INFURA_PROJECT_SECRET);
+    //         const formData = new FormData();
+    //         formData.append("file", file);
+
+    //         const res = await fetch("https://ipfs.infura.io:5001/api/v0/add", {
+    //             method: "POST",
+    //             // headers: {
+    //             //     Authorization: `Basic ${btoa(INFURA_PROJECT_ID + ":" + INFURA_PROJECT_SECRET)}`
+    //             // },
+    //             headers: {
+    //                     Authorization: `Basic ${btoa(INFURA_PROJECT_ID + ":" + INFURA_PROJECT_SECRET)}`
+    //             },
+    //             body: formData
+    //         });
+
+    //         if (!res.ok) {
+    //             throw new Error(`Infura IPFS upload failed: ${res.statusText}`);
+    //         }
+
+    //         const data = await res.json();
+    //         const cid = data.Hash;
+    //         return cid; // Only CID; we'll build full gateway link separately
+    //     } catch (err) {
+    //         console.error("IPFS Upload Error:", err);
+    //         throw err;
+    //     }
+    // }
+
+    // async uploadDocForVerification(loc) {
+    //     try {
+    //         const input = document.createElement("input");
+    //         input.type = "file";
+    //         input.accept = ".pdf,.png,.jpg,.jpeg,.webp,.txt"; // adjust as needed
+
+    //         input.onchange = async () => {
+    //             const file = input.files?.[0];
+    //             if (!file) return;
+    //             this.showStatus("Uploading to Infura IPFS...");
+                
+    //             const cid = await this.uploadToIPFS(file);
+    //             const ipfsUrl = `https://ipfs.infura.io/ipfs/${cid}`;
+                
+    //             this.showStatus(`CID: ${cid} — saving to blockchain...`);
+
+    //             const tx = await loc.uploadVerificationDocument(cid);
+    //             await tx.wait();
+                
+    //             this.showSuccess(`Document saved! View: ${ipfsUrl}`);
+    //             await this.updateAndRenderLocs();
+    //         };
+
+    //         input.click();
+    //     } catch (err) {
+    //         this.showError(`Upload failed: ${err.message}`);
+    //     }
+    // }
+
+    // Store tracking number on-chain
+    async setTrackingNumber(loc) {
+        try {
+            const tracking = prompt("Enter tracking number:");
+            if (!tracking) return;
+
+            const courier = prompt("Enter courier name (optional, e.g., DHL/UPS/FedEx):") || "";
+            const tx = await loc.setTrackingNumber(tracking.trim(), courier.trim());
+            this.showStatus('Setting tracking number...');
+            await tx.wait();
+            this.showSuccess('Tracking number saved!');
+            await this.updateAndRenderLocs();
+        } catch (err) {
+            this.showError(`Failed to set tracking: ${err.message}`);
+        }
+    }
+
+    // universal tracking link (works with many couriers)
+    // 17track.net is a popular universal tracking service
+    // It supports many couriers and provides a single link format
+    buildTrackingLink(trackingNumber) {
+        return `https://www.17track.net/en#nums=${encodeURIComponent(trackingNumber)}`;
+    }
+
+    // Convenience: IPFS gateway link
+    // buildIpfsLink(cid) {
+    //     return `https://ipfs.io/ipfs/${cid}`;
+    // }
+
 
     disconnectWallet() {
         this.provider = null;
